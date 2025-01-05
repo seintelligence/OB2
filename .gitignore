@@ -28,9 +28,7 @@ ENV/
 .env
 
 # Database
-*.db
 *.sqlite3
-bdd/construction_projects.db
 
 # Documents folder (uploaded files)
 documents/

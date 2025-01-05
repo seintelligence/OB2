@@ -62,6 +62,7 @@ class ModeleMur:
         hauteur_cm = int(self.hauteur)  # Conversion en cm
         largeur_cm = int(self.longueur)  # Conversion en cm
         
+        print("Demarrage calcul cout")
         cout_m2, cout_mur = process_wall_costs(hauteur_cm, largeur_cm)
         if cout_m2 is not None:
             self.cout = cout_mur

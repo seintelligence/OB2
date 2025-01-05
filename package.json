@@ -1,0 +1,27 @@
+{
+  "name": "ob2-construction-manager",
+  "version": "1.0.0",
+  "description": "Gestionnaire de projets de construction OB2",
+  "author": "M. Aubron",
+  "dependencies": {
+    "streamlit": "^1.28.0",
+    "pywin32": "^306.0.0",
+    "reportlab": "^4.0.0",
+    "SpiffWorkflow": "^1.1.0",
+    "graphviz": "^0.20.0",
+    "python-dateutil": "^2.8.2",
+    "sqlite3": "^3.42.0"
+  },
+  "python": {
+    "version": "3.12"
+  },
+  "scripts": {
+    "start": "streamlit run app.py",
+    "migrate": "python migrate_db.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/ob2-construction-manager.git"
+  },
+  "license": "MIT"
+}

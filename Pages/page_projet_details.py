@@ -117,24 +117,15 @@ def Page_projet_details():
                     key="isolant"
                 )
                 
-                # Premier champ nombre d'instances
-                if not modele:
-                    nb_instances = st.number_input(
-                        "Nombre d'instances", 
-                        min_value=1, 
-                        value=1,
-                        key="nb_instances_new"
-                    )
-                
-                st.write(f"Coût total estimé: {cout_total:.2f}€")
-                
-                # Second champ nombre d'instances (pour modification)
+                # Champ nombre d'instances
                 nb_instances = st.number_input(
                     "Nombre d'instances", 
                     min_value=1,
                     value=len(modele.instances) if modele and len(modele.instances)>0 else 1,
-                    key="nb_instances_edit"
+                    key="nb_instances"
                 )
+                
+                st.write(f"Coût total estimé: {cout_total:.2f}€")
                 
                 submitted = st.form_submit_button("Enregistrer")
                 if submitted:

@@ -65,7 +65,10 @@ class ModeleMur:
         cout_m2, cout_mur = process_wall_costs(hauteur_cm, largeur_cm)
         if cout_m2 is not None:
             self.cout = cout_mur
-        return cout_mur
+            return cout_mur
+        else:
+            self.cout = 0  # Valeur par défaut si le calcul n'est pas disponible
+            return 0
 
 class InstanceMur:
     def __init__(self, numero: int, modele: ModeleMur, id: int = None):

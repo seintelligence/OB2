@@ -1,9 +1,7 @@
-import win32com.client
-import pythoncom  # Ajout de cet import
+import platform
 import os
 from typing import Tuple, Optional
 import time
-import locale
 
 class ExcelInteraction:
     def __init__(self, file_path: str = "Cout/Modele Devis v1.xlsx"):
@@ -103,26 +101,83 @@ def process_wall_costs(hauteur_mur_cm: float, largeur_mur_cm: float) -> Tuple[Op
     Traite les coûts du mur avec des dimensions en centimètres.
     Les valeurs peuvent être décimales (ex: 300.5).
     """
+    # Vérifier si on est sous Windows
+    if platform.system().lower() != 'windows':
+        print("Warning: Calcul de coût non disponible sous Linux/MacOS")
+        return None, None
+
     print(f"\nTraitement pour un mur de {hauteur_mur_cm}cm x {largeur_mur_cm}cm")
-    excel = ExcelInteraction()
-    
     try:
-        if not excel.connect_to_excel():
-            raise ConnectionError("Impossible de se connecter à Excel")
+        # Import de win32com seulement si on est sous Windows
+        import win32com.client
+        import pythoncom
+        import locale
+
+        # Configuration locale
+        locale.setlocale(locale.LC_NUMERIC, 'C')
+        pythoncom.CoInitialize()
+
+        # Chemin du fichier Excel
+        file_path = os.path.abspath("Cout/Modele Devis v1.xlsx")
+        print(f"Connection à Excel pour le fichier: {file_path}")
         
-        if not excel.update_inputs(hauteur_mur_cm, largeur_mur_cm):
-            raise ValueError("Erreur lors de la mise à jour des entrées")
+        # Initialisation Excel
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
         
-        cout_m2, cout_mur = excel.get_outputs()
-        if cout_m2 is None or cout_mur is None:
-            raise ValueError("Erreur lors de la récupération des sorties")
-        
-        print(f"Traitement terminé avec succès : {cout_m2}€/m² - {cout_mur}€ total")
-        return cout_m2, cout_mur
-        
+        try:
+            print("Ouverture du classeur...")
+            workbook = excel.Workbooks.Open(file_path)
+            
+            print("\nNoms définis disponibles:")
+            for name in workbook.Names:
+                print(f"- {name.Name}")
+            
+            # Mise à jour des entrées
+            hauteur = float(str(hauteur_mur_cm).replace(',', '.'))
+            largeur = float(str(largeur_mur_cm).replace(',', '.'))
+            
+            print(f"Écriture de la hauteur (valeur exacte): {hauteur}")
+            workbook.Names("Hauteur_mur_cm").RefersToRange.Value = hauteur
+            
+            print(f"Écriture de la largeur (valeur exacte): {largeur}")
+            workbook.Names("Largeur_mur_cm").RefersToRange.Value = largeur
+            
+            # Vérification des valeurs
+            hauteur_ecrite = workbook.Names("Hauteur_mur_cm").RefersToRange.Value
+            largeur_ecrite = workbook.Names("Largeur_mur_cm").RefersToRange.Value
+            print(f"Valeurs effectivement écrites dans Excel :")
+            print(f"- Hauteur : {hauteur_ecrite}")
+            print(f"- Largeur : {largeur_ecrite}")
+            
+            # Force le recalcul
+            print("Forçage du recalcul...")
+            workbook.Application.Calculate()
+            
+            # Récupération des résultats
+            cout_m2 = round(workbook.Names("Cout_€_m2").RefersToRange.Value, 2)
+            cout_mur = round(workbook.Names("Cout_€_mur").RefersToRange.Value, 2)
+            
+            print(f"Valeurs trouvées (brutes):")
+            print(f"Cout_€_m2: {cout_m2}")
+            print(f"Cout_€_mur: {cout_mur}")
+            
+            if cout_m2 is None or cout_mur is None:
+                raise ValueError("Valeurs non trouvées")
+                
+            print(f"Traitement terminé avec succès : {cout_m2}€/m² - {cout_mur}€ total")
+            return float(cout_m2), float(cout_mur)
+            
+        finally:
+            # Nettoyage
+            try:
+                if 'workbook' in locals():
+                    workbook.Close(SaveChanges=False)
+                excel.Quit()
+            except Exception as e:
+                print(f"Erreur lors du nettoyage: {str(e)}")
+                
     except Exception as e:
         print(f"Erreur lors du traitement: {str(e)}")
         return None, None
-        
-    finally:
-        excel.cleanup()

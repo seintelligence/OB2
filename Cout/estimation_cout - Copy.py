@@ -3,7 +3,7 @@ import os
 from typing import Tuple, Optional
 import time
 
-class ExcelInteraction:
+class ExcelInteraction2:
     def __init__(self, file_path: str = "Cout/Modele Devis v1.xlsx"):
         self.file_path = os.path.abspath(file_path)
         self.excel = None
@@ -96,7 +96,7 @@ class ExcelInteraction:
         except Exception as e:
             print(f"Erreur lors du nettoyage: {str(e)}")
 
-def process_wall_costs(hauteur_mur_cm: float, largeur_mur_cm: float) -> Tuple[Optional[float], Optional[float]]:
+def process_wall_costs2(hauteur_mur_cm: float, largeur_mur_cm: float) -> Tuple[Optional[float], Optional[float]]:
     """
     Traite les coûts du mur avec des dimensions en centimètres.
     Les valeurs peuvent être décimales (ex: 300.5).

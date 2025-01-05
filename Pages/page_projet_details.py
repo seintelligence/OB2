@@ -125,8 +125,6 @@ def Page_projet_details():
                     key="nb_instances"
                 )
                 
-                st.write(f"Coût total estimé: {cout_total:.2f}€")
-                
                 submitted = st.form_submit_button("Enregistrer")
                 if submitted:
                     if modele:

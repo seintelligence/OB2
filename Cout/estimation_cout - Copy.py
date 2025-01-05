@@ -102,9 +102,9 @@ def process_wall_costs(hauteur_mur_cm: float, largeur_mur_cm: float) -> Tuple[Op
     Les valeurs peuvent être décimales (ex: 300.5).
     """
     # Vérifier si on est sous Windows
-    #if platform.system().lower() != 'windows':
-    #    print("Warning: Calcul de coût non disponible sous Linux/MacOS")
-    #    return None, None
+    if platform.system().lower() != 'windows':
+        print("Warning: Calcul de coût non disponible sous Linux/MacOS")
+        return None, None
 
     print(f"\nTraitement pour un mur de {hauteur_mur_cm}cm x {largeur_mur_cm}cm")
     try:

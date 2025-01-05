@@ -67,7 +67,7 @@ def Page_plan_production():
         # Afficher le header du projet avec style
         st.markdown(f"""
             <div class="project-header">
-                <h2>{projet.nom}</h2>
+                <h2>Projet {projet.nom}</h2>
             </div>
         """, unsafe_allow_html=True)
         

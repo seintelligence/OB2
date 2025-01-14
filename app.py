@@ -1,17 +1,16 @@
-# Modifications dans app.py
-
 import streamlit as st
 from bdd.database import DatabaseManager
-from Pages.page_projets_afficher import Page_projets_afficher
-from Pages.page_projet_details import Page_projet_details
-from Pages.page_plan_production import Page_plan_production
-from Pages.page_configuration import Page_configuration
+from Pages._page_projets_afficher import Page_projets_afficher
+from Pages._page_projet_details import Page_projet_details
+from Pages._page_plan_production import Page_plan_production
+from Pages._page_configuration import Page_configuration
 import base64
 
 st.set_page_config(
     page_title="Gestionnaire OB2",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    menu_items={}, 
 )
 
 def main():
@@ -21,7 +20,8 @@ def main():
         st.session_state.projets = []
         st.session_state.page = 'projets'
     
-    st.session_state.projets = st.session_state.db.charger_projets()
+    # Utilisation de charger_tous_projets au lieu de charger_projets
+    st.session_state.projets = st.session_state.db.charger_tous_projets()
     
     # Logo et en-tête
     file_ = open("assets/ob2-logo.png", "rb")

@@ -19,7 +19,7 @@ def Page_projet_details():
         return
         
     if not hasattr(st.session_state, 'projets'):
-        st.session_state.projets = st.session_state.db.charger_projets()
+        st.session_state.projets = st.session_state.db.charger_tous_projets()
     
     projet = next((p for p in st.session_state.projets if p.id == st.session_state.projet_details), None)
     if not projet:
@@ -75,6 +75,13 @@ def Page_projet_details():
     col_upload, col_filter = st.columns([0.7, 0.3])
     with col_upload:
         nouveaux_docs = st.file_uploader("Ajouter des documents", accept_multiple_files=True)
+        if nouveaux_docs:
+            for doc in nouveaux_docs:
+                document = sauvegarder_document(doc, TypeDocument.AUTRE)  # Par défaut
+                document.sauvegarder(st.session_state.db, projet_id=projet.id)
+                projet.documents.append(document)
+            st.success("Documents ajoutés avec succès!")
+            st.rerun()
     with col_filter:
         filtre_type = st.selectbox("Filtrer par type", ["Tous"] + [t.value for t in TypeDocument])
     
@@ -87,9 +94,12 @@ def Page_projet_details():
     if projet.modeles_mur:
         st.write("**Détail des coûts:**")
         for modele in projet.modeles_mur:
-            st.write(f"- Modèle {modele.reference}: {modele.cout}€ × {len(modele.instances)} instances = {modele.cout * len(modele.instances)}€")
+            cout_modele = modele.cout * len(modele.instances)
+            st.write(f"- Modèle {modele.reference}: {modele.cout}€ × {len(modele.instances)} instances = {cout_modele}€")
 
     st.header("Murs", anchor="murs")
+    if projet.statut != StatutProjet.EN_CONCEPTION:
+        st.error("Le projet n'est plus en conception et il n'est plus possible de modifier les murs")
     if projet.statut == StatutProjet.EN_CONCEPTION:
         if not hasattr(st.session_state, 'modele_a_modifier') and st.button("+ Nouveau modèle de mur"):
             st.session_state.nouveau_modele = True
@@ -137,30 +147,37 @@ def Page_projet_details():
                         
                         current_instances = len(modele.instances)
                         if nb_instances > current_instances:
+                            # Ajout de nouvelles instances
                             for i in range(current_instances, nb_instances):
                                 instance = InstanceMur(i+1, modele)
-                                instance = st.session_state.db.creer_instance_mur(instance, projet.id, modele.id)
+                                instance.sauvegarder(st.session_state.db, projet.id, modele.id)
                                 modele.instances.append(instance)
+                                projet.instances_mur.append(instance)
                         elif nb_instances < current_instances:
+                            # Suppression des instances en trop
                             for instance in modele.instances[nb_instances:]:
-                                st.session_state.db.supprimer_instance_mur(instance.id)
+                                instance.supprimer(st.session_state.db)
+                                projet.instances_mur.remove(instance)
                             modele.instances = modele.instances[:nb_instances]
                             
-                        st.session_state.db.modifier_modele_mur(modele)
+                        modele.modifier(st.session_state.db)
                         del st.session_state.modele_a_modifier
                     else:
                         # Création
                         new_modele = ModeleMur(reference, longueur, hauteur, epaisseur, isolant)
-                        new_modele = st.session_state.db.creer_modele_mur(new_modele, projet.id)
+                        new_modele.calculer_cout()  # Calcul du coût avant sauvegarde
+                        new_modele.sauvegarder(st.session_state.db, projet.id)
                         
+                        # Création des instances
                         for i in range(nb_instances):
                             instance = InstanceMur(i+1, new_modele)
-                            instance = st.session_state.db.creer_instance_mur(instance, projet.id, new_modele.id)
+                            instance.sauvegarder(st.session_state.db, projet.id, new_modele.id)
                             new_modele.instances.append(instance)
+                            projet.instances_mur.append(instance)
                         
+                        projet.modeles_mur.append(new_modele)
                         del st.session_state.nouveau_modele
                     
-                    st.session_state.projets = st.session_state.db.charger_projets()
                     st.success("Modèle " + ("modifié" if modele else "créé") + " avec succès!")
                     st.rerun()
 
@@ -173,7 +190,7 @@ def Page_projet_details():
 
         if projet.modeles_mur:
             for modele in projet.modeles_mur:
-                with st.expander(f"Modèle {modele.reference} --> {len(modele.instances)}"):
+                with st.expander(f"Modèle {modele.reference} --> {len(modele.instances)} instances"):
                     st.write(f"**Dimensions:** {modele.longueur}×{modele.hauteur}×{modele.epaisseur}cm")
                     st.write(f"**Type d'isolant:** {modele.isolant.value}")
                     st.write(f"**Nombre d'instances:** {len(modele.instances)}")
@@ -188,11 +205,10 @@ def Page_projet_details():
                         if st.button("Modifier", key=f"mod_{modele.id}"):
                             st.session_state.modele_a_modifier = modele.id
                             auto_scroll_to_form()
-                            st.success("Modèle modifié!")
                             st.rerun()
                     with col2:
                         if st.button("Supprimer", key=f"del_{modele.id}"):
-                            st.session_state.db.supprimer_modele_mur(modele.id)
-                            st.session_state.projets = st.session_state.db.charger_projets()
+                            modele.supprimer(st.session_state.db)
+                            projet.modeles_mur.remove(modele)
                             st.success("Modèle supprimé!")
                             st.rerun()

@@ -1,10 +1,10 @@
 import streamlit as st
-import os
-from models import Projet, ModeleMur, InstanceMur, Document, TypeDocument, Ouverture, Statut
+from models import InstanceMur, Document, TypeDocument, Statut
+from Others.documents import sauvegarder_document
 
 def Page_instance_mur_afficher():
     if not hasattr(st.session_state, 'projets'):
-        st.session_state.projets = st.session_state.db.charger_projets()
+        st.session_state.projets = st.session_state.db.charger_tous_projets()
     
     st.header("Gestion des Instances de Mur")
     
@@ -45,19 +45,19 @@ def Page_instance_mur_afficher():
                 try:
                     for i in range(nb_instances):
                         instance = InstanceMur(prochain_numero + i, modele)
-                        instance = st.session_state.db.creer_instance_mur(instance, projet.id, modele.id)
+                        instance.sauvegarder(st.session_state.db, projet.id, modele.id)
                         
                         if documents:
                             for doc, type_doc in zip(documents, types_docs):
                                 document = sauvegarder_document(doc, type_doc)
-                                doc_db = st.session_state.db.creer_document(document, instance_id=instance.id)
-                                instance.documents.append(doc_db)
+                                document.sauvegarder(st.session_state.db, instance_id=instance.id)
+                                instance.documents.append(document)
                         
                         modele.instances.append(instance)
                         projet.instances_mur.append(instance)
                     
                     st.session_state.afficher_form_instance = False
-                    st.session_state.projets = st.session_state.db.charger_projets()
+                    st.session_state.projets = st.session_state.db.charger_tous_projets()
                     st.success(f"{nb_instances} instance(s) de mur créée(s) avec succès!")
                     st.rerun()
                 except Exception as e:
@@ -70,7 +70,7 @@ def Page_instance_mur_afficher():
             for modele in projet.modeles_mur:
                 instances_du_modele = [inst for inst in projet.instances_mur if inst.modele == modele]
                 if instances_du_modele:
-                    st.write(f"**Modèle : {modele.reference}** ({modele.longueur}×{modele.hauteur}cm) (isolant:{modele.isolant})")
+                    st.write(f"**Modèle : {modele.reference}** ({modele.longueur}×{modele.hauteur}cm)")
                     for instance in sorted(instances_du_modele, key=lambda x: x.numero):
                         with st.expander(f"Instance n°{instance.numero}"):
                             st.write(f"**Statut:** {instance.statut.value}")
@@ -89,12 +89,12 @@ def Page_instance_mur_afficher():
                             
                             if nouveau_statut != instance.statut:
                                 instance.statut = nouveau_statut
-                                st.session_state.db.modifier_instance_mur(instance)
+                                instance.modifier(st.session_state.db)
                                 st.success("Statut mis à jour")
                                 st.rerun()
 
                             if st.button("Supprimer", key=f"del_inst_{instance.id}"):
-                                st.session_state.db.supprimer_instance_mur(instance.id)
+                                instance.supprimer(st.session_state.db)
                                 modele.instances.remove(instance)
                                 projet.instances_mur.remove(instance)
                                 st.success("Instance supprimée avec succès!")

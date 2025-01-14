@@ -1,0 +1,213 @@
+<style>
+  .kanban-board {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 1rem;
+  }
+
+  .kanban-column {
+    flex: 0 0 300px;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+
+  .column-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .column-header h3 {
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .wall-card {
+    background: white;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    cursor: move;
+  }
+
+  .wall-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  .wall-title {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  .wall-status {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .delayed-column .column-header .icon {
+    color: #ef4444;
+  }
+
+  .week-column .column-header .icon {
+    color: #3b82f6;
+  }
+
+  .wall-card.dragging {
+    opacity: 0.5;
+  }
+
+  .kanban-column.drag-over {
+    background: #e2e8f0;
+  }
+</style>
+
+<div class="kanban-board" id="kanbanBoard">
+  <!-- Les colonnes seront ajoutées ici dynamiquement -->
+</div>
+
+<script>
+  // Initialisation de Streamlit
+  if (window.streamlit === undefined) {
+    window.streamlit = {
+      setComponentValue: function(value) {
+        window.parent.postMessage({
+          type: 'streamlit:setComponentValue',
+          value: value
+        }, '*');
+      },
+      setComponentReady: function() {
+        window.parent.postMessage({
+          type: 'streamlit:componentReady',
+          value: true
+        }, '*');
+      }
+    };
+  }
+
+  // Initialiser le kanban avec les données reçues
+  const walls = {{ walls|tojson }};
+  const currentWeek = {{ current_week }};
+  initKanban(walls, currentWeek);
+
+  // Signaler que le composant est prêt
+  window.streamlit.setComponentReady();
+  
+  // Configuration du composant
+  function initKanban(walls, currentWeek) {
+    const board = document.getElementById('kanbanBoard');
+    
+    // Créer les colonnes
+    const columns = [
+      {
+        id: 'unallocated',
+        title: 'Non alloué',
+        icon: '📋',
+        walls: walls.filter(w => !w.allocation)
+      },
+      {
+        id: 'delayed',
+        title: 'Retard',
+        icon: '⚠️',
+        walls: walls.filter(w => w.status === "EN_FABRICATION" && w.allocation && w.allocation < currentWeek)
+      },
+      ...Array.from({length: 12}, (_, i) => ({
+        id: currentWeek + i,
+        title: `Semaine ${currentWeek + i}`,
+        icon: '📅',
+        walls: walls.filter(w => w.allocation === currentWeek + i)
+      }))
+    ];
+
+    // Vider le board
+    board.innerHTML = '';
+
+    // Créer les colonnes
+    columns.forEach(column => {
+      const columnEl = document.createElement('div');
+      columnEl.className = `kanban-column ${column.id === 'delayed' ? 'delayed-column' : ''} ${typeof column.id === 'number' ? 'week-column' : ''}`;
+      columnEl.id = `column-${column.id}`;
+
+      columnEl.innerHTML = `
+        <div class="column-header">
+          <span class="icon">${column.icon}</span>
+          <h3>${column.title}</h3>
+        </div>
+        <div class="wall-list">
+          ${column.walls.map(wall => `
+            <div class="wall-card" 
+                 draggable="true" 
+                 data-wall-id="${wall.id}">
+              <div class="wall-title">
+                Mur n°${wall.numero} - ${wall.modele.reference}
+              </div>
+              <div class="wall-status">
+                Status: ${wall.status}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      board.appendChild(columnEl);
+    });
+
+    // Gérer le drag and drop
+    const cards = document.querySelectorAll('.wall-card');
+    const columns = document.querySelectorAll('.kanban-column');
+    let draggedCard = null;
+
+    cards.forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        draggedCard = card;
+        card.classList.add('dragging');
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        draggedCard = null;
+      });
+    });
+
+    columns.forEach(column => {
+      column.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        column.classList.add('drag-over');
+      });
+
+      column.addEventListener('dragleave', () => {
+        column.classList.remove('drag-over');
+      });
+
+      column.addEventListener('drop', (e) => {
+        e.preventDefault();
+        column.classList.remove('drag-over');
+
+        if (draggedCard) {
+          const wallId = draggedCard.dataset.wallId;
+          const columnId = column.id.replace('column-', '');
+          const targetWeek = columnId === 'unallocated' || columnId === 'delayed' 
+            ? null 
+            : parseInt(columnId);
+
+          // Notifier Streamlit
+          window.parent.postMessage({
+            type: "streamlit:setComponentValue",
+            value: {
+              wallId: parseInt(wallId),
+              targetWeek: targetWeek
+            }
+          }, "*");
+        }
+      });
+    });
+  }
+
+  // Initialiser le kanban avec les données reçues
+  const walls = {{ walls|tojson }};
+  const currentWeek = {{ current_week }};
+  initKanban(walls, currentWeek);
+</script>

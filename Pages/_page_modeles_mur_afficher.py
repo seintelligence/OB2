@@ -4,7 +4,7 @@ from Others.documents import sauvegarder_document
 
 def Page_modeles_mur_afficher():
     if not hasattr(st.session_state, 'projets'):
-        st.session_state.projets = st.session_state.db.charger_projets()
+        st.session_state.projets = st.session_state.db.charger_tous_projets()
     
     st.header("Gestion des Modèles de Mur")
     
@@ -38,8 +38,6 @@ def Page_modeles_mur_afficher():
                                     value=int(modele.hauteur) if modele else 0)
             epaisseur = st.number_input("Épaisseur (cm)", min_value=0, step=1, 
                                       value=int(modele.epaisseur) if modele else 0)
-            cout = st.number_input("Coût unitaire (€)", min_value=0.0, 
-                                 value=float(modele.cout) if modele else 0.0)
             isolant = st.selectbox("Type d'isolant", options=list(TypeIsolant), key="type_isolant",
                                format_func=lambda x: x.value,
                                index=list(TypeIsolant).index(modele.isolant) if modele else 0)
@@ -94,35 +92,26 @@ def Page_modeles_mur_afficher():
             if submitted:
                 try:
                     if not modele:
-                        modele = ModeleMur(
-                            reference, 
-                            longueur, 
-                            hauteur, 
-                            epaisseur,
-                            isolant
-                        )
-                        modele.cout = cout
+                        modele = ModeleMur(reference, longueur, hauteur, epaisseur, isolant)
                         modele.ouvertures = ouvertures
-                        modele = st.session_state.db.creer_modele_mur(modele, projet.id)
+                        modele.sauvegarder(st.session_state.db, projet.id)
                     else:
                         modele.reference = reference
                         modele.longueur = longueur
                         modele.hauteur = hauteur
                         modele.epaisseur = epaisseur
-                        modele.cout = cout
-                        modele.ouvertures = ouvertures
                         modele.isolant = isolant
-                        st.session_state.db.modifier_modele_mur(modele)
+                        modele.ouvertures = ouvertures
+                        modele.modifier(st.session_state.db)
                     
                     # Ajout des nouveaux documents
                     if nouveaux_docs:
                         for doc, type_doc in zip(nouveaux_docs, types_docs):
                             document = sauvegarder_document(doc, type_doc)
-                            st.session_state.db.creer_document(document, modele_id=modele.id)
-                            modele.documents.append(document)
+                            document.sauvegarder(st.session_state.db, modele_id=modele.id)
                     
                     # Mise à jour de l'interface
-                    st.session_state.projets = st.session_state.db.charger_projets()
+                    st.session_state.projets = st.session_state.db.charger_tous_projets()
                     if is_modification:
                         del st.session_state.modele_a_modifier
                     else:
@@ -159,11 +148,11 @@ def Page_modeles_mur_afficher():
                     with col1:
                         if st.button("Modifier", key=f"mod_model_{projet.nom}_{modele.id}"):
                             st.session_state.modele_a_modifier = modele.id
-                            st.session_state.afficher_form_modele = True  # Ajout de cette ligne
+                            st.session_state.afficher_form_modele = True
                             st.rerun()
                     with col2:
                         if st.button("Supprimer", key=f"del_model_{projet.nom}_{modele.id}"):
-                            st.session_state.db.supprimer_modele_mur(modele.id)
-                            st.session_state.projets = st.session_state.db.charger_projets()
+                            modele.supprimer(st.session_state.db)
+                            st.session_state.projets = st.session_state.db.charger_tous_projets()
                             st.success("Modèle supprimé avec succès!")
                             st.rerun()

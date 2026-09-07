@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de Bord Stratégique Entreprises</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .collapsible-content {
+      transition: max-height 0.3s ease-in-out;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen">
+
+  <!-- Header & Statistiques Globales -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="building-2" class="text-blue-600"></i>
+            Tableau de Bord Stratégique
+          </h1>
+          <p class="text-xs text-slate-500 mt-1">Analyse de maturité & compatibilité commerciale</p>
+        </div>
+
+        <div class="flex items-center gap-4 flex-wrap">
+          <!-- Zone d'importation de fichier JSON -->
+          <div class="flex items-center gap-2">
+            <label for="jsonFileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              Charger JSON
+            </label>
+            <input type="file" id="jsonFileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+          </div>
+
+          <div class="bg-slate-100 rounded-lg px-4 py-2 text-center">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Régions</span>
+            <span id="stat-regions" class="text-xl font-bold text-slate-800">0</span>
+          </div>
+          <div class="bg-slate-100 rounded-lg px-4 py-2 text-center">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Entreprises</span>
+            <span id="stat-companies" class="text-xl font-bold text-slate-800">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Section Supérieure : Filtres & Pondérations à gauche, Graphique à droite -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+
+      <!-- Barre latérale gauche : Pondérations & Filtres collapsables -->
+      <aside class="lg:col-span-1 space-y-6">
+
+        <!-- Module de Pondération Dynamique Collapsible -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between cursor-pointer" onclick="toggleCollapseBox('weights-content', 'weights-chevron')">
+            <h2 class="font-bold text-slate-900 flex items-center gap-2 text-sm">
+              <i data-lucide="sliders" class="w-4 h-4 text-blue-600"></i> Pondérations
+            </h2>
+            <div class="flex items-center gap-2">
+              <button onclick="event.stopPropagation(); resetWeights()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Réinitialiser</button>
+              <i data-lucide="chevron-down" id="weights-chevron" class="w-4 h-4 text-slate-500 transition-transform"></i>
+            </div>
+          </div>
+
+          <div id="weights-content" class="hidden space-y-4 text-xs pt-4">
+            <div class="mb-4 p-2.5 rounded-lg flex items-center justify-between transition-colors" id="weight-badge-container">
+              <span class="text-xs font-medium">Somme des poids :</span>
+              <span id="weight-sum-badge" class="px-2 py-0.5 rounded text-xs font-bold">100 / 100</span>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-biosource" class="font-medium text-slate-700">Biosourcé (Max 20)</label>
+                <span id="w-biosource-val" class="font-bold">20</span>
+              </div>
+              <input type="range" id="w-biosource" min="0" max="40" value="20" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-marches_publics" class="font-medium text-slate-700">Marchés Publics (Max 20)</label>
+                <span id="w-marches_publics-val" class="font-bold">20</span>
+              </div>
+              <input type="range" id="w-marches_publics" min="0" max="40" value="20" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-ossature_bois" class="font-medium text-slate-700">Ossature Bois (Max 15)</label>
+                <span id="w-ossature_bois-val" class="font-bold">15</span>
+              </div>
+              <input type="range" id="w-ossature_bois" min="0" max="30" value="15" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-sante_financiere" class="font-medium text-slate-700">Santé Financière (Max 15)</label>
+                <span id="w-sante_financiere-val" class="font-bold">15</span>
+              </div>
+              <input type="range" id="w-sante_financiere" min="0" max="30" value="15" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-taille_effectif" class="font-medium text-slate-700">Effectif (Max 10)</label>
+                <span id="w-taille_effectif-val" class="font-bold">10</span>
+              </div>
+              <input type="range" id="w-taille_effectif" min="0" max="20" value="10" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-proximite_36500" class="font-medium text-slate-700">Proximité (Max 10)</label>
+                <span id="w-proximite_36500-val" class="font-bold">10</span>
+              </div>
+              <input type="range" id="w-proximite_36500" min="0" max="20" value="10" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-1">
+                <label for="w-complementarite_ob2" class="font-medium text-slate-700">Complémentarité (Max 10)</label>
+                <span id="w-complementarite_ob2-val" class="font-bold">10</span>
+              </div>
+              <input type="range" id="w-complementarite_ob2" min="0" max="20" value="10" oninput="updateWeights()" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- Module de Filtrage Collapsible -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between cursor-pointer" onclick="toggleCollapseBox('filters-content', 'filters-chevron')">
+            <h2 class="font-bold text-slate-900 flex items-center gap-2 text-sm">
+              <i data-lucide="filter" class="w-4 h-4 text-blue-600"></i> Filtres Recherche
+            </h2>
+            <i data-lucide="chevron-down" id="filters-chevron" class="w-4 h-4 text-slate-500 transition-transform"></i>
+          </div>
+
+          <div id="filters-content" class="hidden space-y-4 pt-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Mots-clés / Recherche libre</label>
+              <div class="relative">
+                <input type="text" id="searchInput" oninput="filterData()" placeholder="Nom, SIRET, Matériau..." class="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5"></i>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Compatibilité stratégique</label>
+              <select id="filterCompat" onchange="filterData()" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="ALL">Toutes les compatibilités</option>
+                <option value="Excellent partenaire">Excellent partenaire</option>
+                <option value="Partenaire intéressant">Partenaire intéressant</option>
+                <option value="Opportunité ponctuelle">Opportunité ponctuelle</option>
+                <option value="Peu pertinent">Peu pertinent</option>
+              </select>
+            </div>
+
+            <!-- Filtre dynamique par Régions (Cocher / Décocher) -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-medium text-slate-700">Filtrer par Régions</label>
+                <div class="space-x-1 text-[10px]">
+                  <button onclick="toggleAllRegions(true)" class="text-blue-600 hover:underline">Tout</button>
+                  <span>/</span>
+                  <button onclick="toggleAllRegions(false)" class="text-blue-600 hover:underline">Aucun</button>
+                </div>
+              </div>
+              <div id="region-filters-container" class="space-y-1.5 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+                <!-- Injecté dynamiquement -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Section Graphique à Bulles Global (Positionnement Stratégique) -->
+      <section class="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-5 h-5 text-blue-600"></i>
+              Cartographie Globale du Positionnement Stratégique
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Axe X : Score Dynamique (%) | Axe Y : Montant Moyen des Marchés (€) | Taille des bulles : Somme Totale des Marchés</p>
+          </div>
+        </div>
+        <div class="w-full h-80 relative">
+          <canvas id="globalBubbleChart"></canvas>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Zone Principale des Données (Liste des Régions et Entreprises) -->
+    <section class="space-y-6">
+      <div id="dashboard-container" class="space-y-6">
+        <!-- Les groupes régionaux et entreprises seront injectés ici -->
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Données d'exemple par défaut adaptées au format
+    const sampleData = {
+      "Centre-Val de Loire": {
+        "region": "Centre-Val de Loire",
+        "entreprises": [
+          {
+            "nom_entreprise": "Bois & Paille Construction",
+            "siret": "12345678900012",
+            "adresse_siege": "12 Rue des Artisans, 45000 Orléans",
+            "departements_intervention": "45, 28, 37, 41",
+            "region": "Centre-Val de Loire",
+            "site_internet": "https://example.com",
+            "telephone": "02 38 00 00 00",
+            "adresse_email": "contact@boispaille.fr",
+            "linkedin": "https://linkedin.com",
+            "date_creation": "2015-04-12",
+            "effectif": "25 salariés",
+            "chiffre_affaires": "4 500 000 €",
+            "dirigeants": "Jean Dupont (Gérant)",
+            "activite_proportion": "Charpente / Ossature bois",
+            "types_maitres_ouvrage": "Commune, Département",
+            "types_batiments_realises": "Écoles, Gymnases",
+            "experience_biosourcee": "Paille, Fibre de bois, Chanvre",
+            "projets_biosources_connus": "Groupe Scolaire Éco-Responsable (2023)",
+            "potentiel_commercial": "Très fort",
+            "pourquoi_potentiel": "Forte croissance et recherche active de partenaires locaux.",
+            "reseaux": "RFCP, Fibois",
+            "strategie_approche": {
+              "qui_contacter": "Jean Dupont (Gérant)",
+              "pourquoi_et_angle": "Expertise partagée sur la paille structurelle.",
+              "projet_ou_sujet_a_mettre_en_avant": "Partenariat sur les futurs marchés publics régionaux.",
+              "introduction_possible": "Mise en relation via le réseau RFCP."
+            },
+            "statistiques_marches": {
+              "nb_marches_publics": 3,
+              "montant_moyen_marches": "450 000 €",
+              "marches": [
+                { "date": "2023-01-15", "montant": 350000, "mots_cles": "Paille", "description": "Construction d'une école" },
+                { "date": "2023-08-20", "montant": 550000, "mots_cles": "Ossature Bois", "description": "Extension d'un gymnase" },
+                { "date": "2024-02-10", "montant": 450000, "mots_cles": "Chanvre", "description": "Réhabilitation centre culturel" }
+              ]
+            },
+            "score_total_sur_100": 82,
+            "details_scores": {
+              "score_biosource_20pt": 18,
+              "score_marches_publics_20pt": 16,
+              "score_ossature_bois_15pt": 14,
+              "score_sante_financiere_15pt": 12,
+              "score_taille_effectif_10pt": 8,
+              "score_proximite_36500_10pt": 6,
+              "score_complementarite_ob2_10pt": 8
+            },
+            "compatibilite_strategique": "Excellent partenaire",
+            "rationnel_compatibilite": "Forte maturité technique et adéquation parfaite sur le biosourcé.",
+            "statut_ia": "SUCCÈS",
+            "statut_api_Siren": "SUCCÈS",
+            "statut_DDGS": "SUCCÈS"
+          }
+        ]
+      },
+      "Île-de-France": {
+        "region": "Île-de-France",
+        "entreprises": [
+          {
+            "nom_entreprise": "IDF Bois Eco",
+            "siret": "98765432100019",
+            "adresse_siege": "5 Boulevard Saint-Michel, 75005 Paris",
+            "departements_intervention": "75, 92, 93",
+            "region": "Île-de-France",
+            "site_internet": "https://example.fr",
+            "telephone": "01 40 00 00 00",
+            "adresse_email": "contact@idfboiseco.fr",
+            "chiffre_affaires": "6 200 000 €",
+            "effectif": "40 salariés",
+            "statistiques_marches": {
+              "nb_marches_publics": 5,
+              "montant_moyen_marches": "800 000 €",
+              "marches": [
+                { "date": "2023-05-10", "montant": 800000, "mots_cles": "Ossature Bois", "description": "Bâtiment public" }
+              ]
+            },
+            "score_total_sur_100": 75,
+            "compatibilite_strategique": "Partenaire intéressant"
+          }
+        ]
+      }
+    };
+
+    // Chargement automatique du fichier JSON à la racine au démarrage de la page
+    window.addEventListener('DOMContentLoaded', () => {
+      fetch('avancement_analyses_ob2.json')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Fichier introuvable sur le serveur");
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("Fichier 'avancement_analyses_ob2.json' chargé avec succès.");
+          initData(data);
+          updateWeights();
+        })
+        .catch(error => {
+          console.warn("Impossible de charger 'avancement_analyses_ob2.json' automatiquement (utilisation des données de secours) :", error);
+          initData(sampleData);
+          updateWeights();
+        });
+    });
+
+    const maxInitialScores = {
+      biosource: 20,
+      marches_publics: 20,
+      ossature_bois: 15,
+      sante_financiere: 15,
+      taille_effectif: 10,
+      proximite_36500: 10,
+      complementarite_ob2: 10
+    };
+
+    let currentWeights = {
+      biosource: 20,
+      marches_publics: 20,
+      ossature_bois: 15,
+      sante_financiere: 15,
+      taille_effectif: 10,
+      proximite_36500: 10,
+      complementarite_ob2: 10
+    };
+
+    let processedData = [];
+    let globalBubbleChartInstance = null;
+    let availableRegions = [];
+    let selectedRegions = new Set();
+
+    // Liste des régions par défaut souhaitées (comparaison insensible aux accents / casse)
+    const defaultSelectedRegionsList = [
+      "ile de france",
+      "île-de-france",
+      "pays de la loire",
+      "centre val de loire",
+      "centre-val de loire",
+      "normandie",
+      "occitanie",
+      "hauts de france",
+      "hauts-de-france"
+    ];
+
+    // Fonction de repli / déploiement des modules de la sidebar
+    function toggleCollapseBox(contentId, chevronId) {
+      const content = document.getElementById(contentId);
+      const chevron = document.getElementById(chevronId);
+      if (content) {
+        content.classList.toggle('hidden');
+        if (chevron) {
+          chevron.classList.toggle('rotate-180');
+        }
+      }
+    }
+
+    // LECTURE & IMPORTATION DU FICHIER JSON
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsedData = JSON.parse(e.target.result);
+          initData(parsedData);
+          updateWeights();
+          alert("Fichier JSON chargé avec succès !");
+        } catch (err) {
+          alert("Erreur lors de la lecture du fichier JSON. Vérifiez le format.");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function initData(rawData) {
+      let dataArray = [];
+
+      if (Array.isArray(rawData)) {
+        dataArray = rawData;
+      } else if (typeof rawData === 'object' && rawData !== null) {
+        Object.keys(rawData).forEach(regionKey => {
+          const regionObj = rawData[regionKey];
+          const regionName = regionObj.region || regionKey;
+          const entreprises = regionObj.entreprises || [];
+
+          entreprises.forEach(item => {
+            dataArray.push({
+              ...item,
+              region: item.region && item.region.trim() !== "" ? item.region : regionName
+            });
+          });
+        });
+      }
+
+      processedData = dataArray.map(item => {
+        const region = item.region && item.region.trim() !== "" ? item.region : "Général";
+        const details = item.details_scores || {};
+
+        const extractedScores = {
+          biosource: details.score_biosource_20pt ?? item.score_biosource_20pt ?? 0,
+          marches_publics: details.score_marches_publics_20pt ?? item.score_marches_publics_20pt ?? 0,
+          ossature_bois: details.score_ossature_bois_15pt ?? item.score_ossature_bois_15pt ?? 0,
+          sante_financiere: details.score_sante_financiere_15pt ?? item.score_sante_financiere_15pt ?? 0,
+          taille_effectif: details.score_taille_effectif_10pt ?? item.score_taille_effectif_10pt ?? 0,
+          proximite_36500: details.score_proximite_36500_10pt ?? item.score_proximite_36500_10pt ?? 0,
+          complementarite_ob2: details.score_complementarite_ob2_10pt ?? item.score_complementarite_ob2_10pt ?? 0
+        };
+
+        const initialScore = item.score_total_sur_100 ?? 0;
+
+        return {
+          ...item,
+          region: region,
+          extractedScores: extractedScores,
+          initial_score: initialScore,
+          computed_score: initialScore
+        };
+      });
+
+      // Extraire la liste unique des régions pour les cases à cocher
+      availableRegions = Array.from(new Set(processedData.map(item => item.region))).sort();
+      
+      // Initialiser les régions sélectionnées par défaut selon la liste demandée
+      selectedRegions.clear();
+      availableRegions.forEach(reg => {
+        const normalizedReg = reg.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/-/g, " ");
+        const isDefault = defaultSelectedRegionsList.some(d => normalizedReg.includes(d) || d.includes(normalizedReg));
+        if (isDefault) {
+          selectedRegions.add(reg);
+        }
+      });
+
+      // Si aucune région du fichier ne correspond à la liste par défaut, on sélectionne tout par défaut pour ne pas bloquer l'affichage vide
+      if (selectedRegions.size === 0) {
+        availableRegions.forEach(reg => selectedRegions.add(reg));
+      }
+
+      renderRegionCheckboxes();
+    }
+
+    function renderRegionCheckboxes() {
+      const container = document.getElementById('region-filters-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      availableRegions.forEach((region, index) => {
+        const isChecked = selectedRegions.has(region);
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between';
+        div.innerHTML = `
+          <label class="flex items-center gap-2 cursor-pointer truncate text-slate-700">
+            <input type="checkbox" value="${region}" ${isChecked ? 'checked' : ''} onchange="handleRegionCheckboxChange(this)" class="accent-blue-600 rounded">
+            <span class="truncate" title="${region}">${region}</span>
+          </label>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function handleRegionCheckboxChange(checkbox) {
+      const region = checkbox.value;
+      if (checkbox.checked) {
+        selectedRegions.add(region);
+      } else {
+        selectedRegions.delete(region);
+      }
+      filterData();
+      renderGlobalBubbleChart();
+    }
+
+    function toggleAllRegions(select) {
+      if (select) {
+        selectedRegions = new Set(availableRegions);
+      } else {
+        selectedRegions.clear();
+      }
+      renderRegionCheckboxes();
+      filterData();
+      renderGlobalBubbleChart();
+    }
+
+    function calculateDynamicScore(extractedScores, weights) {
+      let weightedPointsSum = 0;
+      let totalCurrentWeights = 0;
+
+      for (const key in extractedScores) {
+        const valObtenue = extractedScores[key];
+        const maxInit = maxInitialScores[key];
+        const poidsActuel = weights[key] ?? 0;
+
+        const ratio = valObtenue / maxInit;
+        weightedPointsSum += ratio * poidsActuel;
+        totalCurrentWeights += poidsActuel;
+      }
+
+      if (totalCurrentWeights === 0) return 0;
+      return Math.round((weightedPointsSum / totalCurrentWeights) * 100);
+    }
+
+    function updateWeights() {
+      let sum = 0;
+      for (const key in currentWeights) {
+        const input = document.getElementById(`w-${key}`);
+        const val = parseInt(input.value, 10) || 0;
+        currentWeights[key] = val;
+        document.getElementById(`w-${key}-val`).innerText = val;
+        sum += val;
+      }
+
+      const badge = document.getElementById('weight-sum-badge');
+      const badgeContainer = document.getElementById('weight-badge-container');
+      badge.innerText = `${sum} / 100`;
+
+      if (sum === 100) {
+        badgeContainer.className = "mb-4 p-2.5 rounded-lg flex items-center justify-between bg-emerald-100 text-emerald-800";
+      } else {
+        badgeContainer.className = "mb-4 p-2.5 rounded-lg flex items-center justify-between bg-amber-100 text-amber-800";
+      }
+
+      processedData.forEach(item => {
+        item.computed_score = calculateDynamicScore(item.extractedScores, currentWeights);
+      });
+
+      renderDashboard();
+      renderGlobalBubbleChart();
+    }
+
+    function resetWeights() {
+      const defaults = {
+        biosource: 20,
+        marches_publics: 20,
+        ossature_bois: 15,
+        sante_financiere: 15,
+        taille_effectif: 10,
+        proximite_36500: 10,
+        complementarite_ob2: 10
+      };
+
+      for (const key in defaults) {
+        document.getElementById(`w-${key}`).value = defaults[key];
+      }
+      updateWeights();
+    }
+
+    function getScoreBadgeClass(score) {
+      if (score >= 70) return "bg-emerald-500 text-white";
+      if (score >= 50) return "bg-blue-500 text-white";
+      if (score >= 35) return "bg-amber-500 text-white";
+      return "bg-rose-500 text-white";
+    }
+
+    function getCompatBadgeClass(compat) {
+      switch (compat) {
+        case "Excellent partenaire": return "bg-emerald-100 text-emerald-800 border-emerald-200";
+        case "Partenaire intéressant": return "bg-blue-100 text-blue-800 border-blue-200";
+        case "Opportunité ponctuelle": return "bg-amber-100 text-amber-800 border-amber-200";
+        default: return "bg-rose-100 text-rose-800 border-rose-200";
+      }
+    }
+
+    function renderDashboard() {
+      const container = document.getElementById('dashboard-container');
+      container.innerHTML = '';
+
+      const groupedByRegion = {};
+      processedData.forEach(item => {
+        if (!groupedByRegion[item.region]) {
+          groupedByRegion[item.region] = [];
+        }
+        groupedByRegion[item.region].push(item);
+      });
+
+      const regions = Object.keys(groupedByRegion);
+
+      document.getElementById('stat-regions').innerText = regions.length;
+      document.getElementById('stat-companies').innerText = processedData.length;
+
+      regions.forEach((regionName, index) => {
+        const companies = groupedByRegion[regionName].sort((a, b) => b.computed_score - a.computed_score);
+
+        const regionGroup = document.createElement('div');
+        regionGroup.className = 'bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm region-group';
+        regionGroup.setAttribute('data-region', regionName);
+
+        const regionHeader = `
+          <button onclick="toggleRegionCollapse('region-content-${index}')" class="w-full px-6 py-4 bg-slate-100 hover:bg-slate-200/70 flex items-center justify-between border-b border-slate-200 transition-colors">
+            <div class="flex items-center gap-3">
+              <i data-lucide="map-pin" class="w-5 h-5 text-blue-600"></i>
+              <h2 class="text-lg font-bold text-slate-800">${regionName}</h2>
+              <span class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">${companies.length}</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-500 transition-transform region-chevron"></i>
+          </button>
+          <div id="region-content-${index}" class="p-6 space-y-4 hidden"></div>
+        `;
+
+        regionGroup.innerHTML = regionHeader;
+        container.appendChild(regionGroup);
+
+        const regionContent = regionGroup.querySelector(`#region-content-${index}`);
+        companies.forEach((company, cIdx) => {
+          const card = createCompanyCard(company, `${index}-${cIdx}`);
+          regionContent.appendChild(card);
+        });
+      });
+
+      filterData();
+      lucide.createIcons();
+    }
+
+    function createCompanyCard(item, id) {
+      const delta = item.computed_score - item.initial_score;
+      let deltaBadge = '';
+      if (delta > 0) {
+        deltaBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-bold">+${delta}</span>`;
+      } else if (delta < 0) {
+        deltaBadge = `<span class="bg-rose-100 text-rose-800 text-xs px-2 py-0.5 rounded font-bold">${delta}</span>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'border border-slate-200 rounded-lg overflow-hidden company-card bg-white';
+      card.setAttribute('data-fulltext', JSON.stringify(item).toLowerCase());
+      card.setAttribute('data-compat', item.compatibilite_strategique || '');
+      card.setAttribute('data-region', item.region || '');
+
+      const marketsList = item.statistiques_marches?.marches 
+        ? (Array.isArray(item.statistiques_marches.marches) ? item.statistiques_marches.marches : [item.statistiques_marches.marches]) 
+        : [];
+
+      card.innerHTML = `
+        <div class="p-4 bg-slate-50 hover:bg-slate-100 cursor-pointer flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 transition-colors" onclick="toggleCollapse('company-details-${id}')">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg ${getScoreBadgeClass(item.computed_score)} flex items-center justify-center text-lg font-bold shadow-sm">
+              ${item.computed_score}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-slate-900 text-base">${item.nom_entreprise || 'Sans nom'}</h3>
+                ${deltaBadge}
+              </div>
+              <p class="text-xs text-slate-500">SIRET: ${item.siret || 'N/C'} | ${item.adresse_siege || 'Adresse non renseignée'}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-full text-xs font-semibold border ${getCompatBadgeClass(item.compatibilite_strategique)}">
+              ${item.compatibilite_strategique || 'N/C'}
+            </span>
+            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400"></i>
+          </div>
+        </div>
+
+        <div id="company-details-${id}" class="hidden p-6 space-y-6 bg-white border-t border-slate-100">
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="p-3 bg-slate-50 rounded-lg space-y-1">
+              <span class="font-semibold text-slate-500">Coordonnées</span>
+              <p><strong>Tél:</strong> ${item.telephone || 'Non trouvé'}</p>
+              <p><strong>Email:</strong> ${item.adresse_email || 'Non trouvé'}</p>
+              <p><strong>Web:</strong> ${item.site_internet && item.site_internet.startsWith('http') ? `<a href="${item.site_internet}" target="_blank" class="text-blue-600 underline">${item.site_internet}</a>` : (item.site_internet || 'Non trouvé')}</p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg space-y-1">
+              <span class="font-semibold text-slate-500">Données Clés</span>
+              <p><strong>Effectif:</strong> ${item.effectif || 'N/C'}</p>
+              <p><strong>CA:</strong> ${item.chiffre_affaires || 'N/C'}</p>
+              <p><strong>Création:</strong> ${item.date_creation || 'N/C'}</p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg space-y-1">
+              <span class="font-semibold text-slate-500">Activités & Biosourcé</span>
+              <p><strong>Proportions:</strong> ${item.activite_proportion || 'N/C'}</p>
+              <p><strong>Exp. Biosourcée:</strong> ${item.experience_biosourcee || 'N/C'}</p>
+            </div>
+          </div>
+
+          <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100 space-y-2 text-xs">
+            <h4 class="font-bold text-blue-900 flex items-center gap-2">
+              <i data-lucide="target" class="w-4 h-4 text-blue-600"></i> Stratégie d'approche
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p><strong>Qui contacter:</strong> ${item.strategie_approche?.qui_contacter || 'N/C'}</p>
+                <p><strong>Angle:</strong> ${item.strategie_approche?.pourquoi_et_angle || 'N/C'}</p>
+              </div>
+              <div>
+                <p><strong>Sujet à mettre en avant:</strong> ${item.strategie_approche?.projet_ou_sujet_a_mettre_en_avant || 'N/C'}</p>
+                <p><strong>Introduction:</strong> ${item.strategie_approche?.introduction_possible || 'N/C'}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conteneur fixe (non-collapsible) pour les statistiques de marchés -->
+          <div class="border border-slate-200 rounded-lg overflow-hidden bg-white">
+            <div class="px-4 py-3 bg-slate-50 flex items-center justify-between text-xs font-bold text-slate-700 border-b border-slate-200">
+              <span class="flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-500"></i>
+                Statistiques des Marchés Publics & Activités
+              </span>
+            </div>
+            <div class="p-4 space-y-4">
+              <!-- Nouveaux champs intégrés -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div>
+                  <span class="text-slate-500 block font-medium">Activité / Proportions</span>
+                  <span class="font-bold text-slate-800">${item.activite_proportion || 'N/C'}</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block font-medium">Types maîtres d'ouvrage</span>
+                  <span class="font-bold text-slate-800">${item.types_maitres_ouvrage || 'N/C'}</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block font-medium">Types bâtiments réalisés</span>
+                  <span class="font-bold text-slate-800">${item.types_batiments_realises || 'N/C'}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs bg-slate-50 p-3 rounded-lg">
+                <span><strong>Nombre de marchés:</strong> ${item.statistiques_marches?.nb_marches_publics || 0}</span>
+                <span><strong>Montant Moyen:</strong> <span class="text-blue-600 font-bold">${item.statistiques_marches?.montant_moyen_marches || '0 €'}</span></span>
+              </div>
+              <div class="w-full h-48">
+                <canvas id="chart-${id}"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      // Déclenche le rendu du graphique à l'ouverture de la carte entreprise
+      setTimeout(() => {
+        renderMarketChart(id, marketsList);
+      }, 50);
+
+      return card;
+    }
+
+    // Gestion de l'ouverture exclusive des régions (accordéon)
+    function toggleRegionCollapse(targetId) {
+      const targetEl = document.getElementById(targetId);
+      if (!targetEl) return;
+
+      const isCurrentlyHidden = targetEl.classList.contains('hidden');
+
+      document.querySelectorAll('[id^="region-content-"]').forEach(el => {
+        el.classList.add('hidden');
+      });
+
+      if (isCurrentlyHidden) {
+        targetEl.classList.remove('hidden');
+      }
+    }
+
+    // Variable pour stocker les instances des graphiques par ID d'entreprise
+  window.pendingCompanyData = {};
+  let companyChartsInstances = {};
+
+  function renderCompanyChart(item, id) {
+    const canvas = document.getElementById(`company-chart-${id}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const marches = item.statistiques_marches?.marches || [];
+    const labels = marches.map((m, idx) => m.date ? m.date : `Marché ${idx + 1}`);
+    const dataValues = marches.map(m => m.montant || 0);
+
+    // Destruction de l'ancienne instance si elle existe
+    if (companyChartsInstances[id]) {
+      companyChartsInstances[id].destroy();
+    }
+
+    companyChartsInstances[id] = new Chart(ctx, {
+      type: 'bar', // ou 'line', 'pie', etc. selon votre besoin
+      data: {
+        labels: labels.length > 0 ? labels : ['Aucun marché'],
+        datasets: [{
+          label: 'Montant des marchés (€)',
+          data: dataValues.length > 0 ? dataValues : [0],
+          backgroundColor: 'rgba(37, 99, 235, 0.5)',
+          borderColor: 'rgba(37, 99, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function toggleCollapse(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.toggle('hidden');
+      
+      // Si le panneau vient de s'ouvrir (il n'est plus caché)
+      if (!el.classList.contains('hidden')) {
+        if (id.startsWith('company-details-')) {
+          const cardId = id.replace('company-details-', '');
+          // Petit délai pour laisser le DOM calculer l'affichage
+          setTimeout(() => {
+            if (window.pendingCompanyData && window.pendingCompanyData[cardId]) {
+              renderCompanyChart(window.pendingCompanyData[cardId], cardId);
+            }
+          }, 50);
+        }
+      }
+    }
+  } 
+    const chartsRegistry = {};
+    function renderMarketChart(id, markets) {
+      const canvasId = `chart-${id}`;
+      if (chartsRegistry[canvasId]) return;
+
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+
+      const yearsSet = new Set();
+      const keywordsSet = new Set();
+
+      markets.forEach(m => {
+        let year = "Inconnue";
+        if (m.date) {
+          const match = m.date.match(/\d{4}/);
+          if (match) year = match[0];
+        }
+        yearsSet.add(year);
+
+        const kw = m.mots_cles || m["mots cles"] || "Non spécifié";
+        keywordsSet.add(kw);
+      });
+
+      const sortedYears = Array.from(yearsSet).sort();
+      const keywords = Array.from(keywordsSet);
+
+      const colors = [
+        { bg: 'rgba(37, 99, 235, 0.75)', border: 'rgba(37, 99, 235, 1)' },
+        { bg: 'rgba(16, 185, 129, 0.75)', border: 'rgba(16, 185, 129, 1)' },
+        { bg: 'rgba(245, 158, 11, 0.75)', border: 'rgba(245, 158, 11, 1)' },
+        { bg: 'rgba(239, 68, 68, 0.75)', border: 'rgba(239, 68, 68, 1)' },
+        { bg: 'rgba(139, 92, 246, 0.75)', border: 'rgba(139, 92, 246, 1)' }
+      ];
+
+      const datasets = keywords.map((kw, index) => {
+        const color = colors[index % colors.length];
+        const dataForKw = sortedYears.map(year => {
+          let sum = 0;
+          markets.forEach(m => {
+            let mYear = "Inconnue";
+            if (m.date) {
+              const match = m.date.match(/\d{4}/);
+            if (match) mYear = match[0];
+            }
+            const mKw = m.mots_cles || m["mots cles"] || "Non spécifié";
+            if (mYear === year && mKw === kw) {
+              const amount = typeof m.montant === 'number' ? m.montant : parseInt(m.montant, 10) || 0;
+              sum += amount;
+            }
+          });
+          return sum;
+        });
+
+        return {
+          label: kw,
+          data: dataForKw,
+          backgroundColor: color.bg,
+          borderColor: color.border,
+          borderWidth: 1,
+          borderRadius: 2
+        };
+      });
+
+      chartsRegistry[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedYears,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              display: true,
+              position: 'bottom',
+              labels: { font: { size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { font: { size: 10 } }
+            },
+            y: {
+              beginAtZero: true,
+              stacked: true,
+              ticks: {
+                callback: (value) => value.toLocaleString('fr-FR') + ' €',
+                font: { size: 10 }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Rendu du Graphique à Bulles Global (Axe Y = Montant Moyen, Taille = Somme Totale)
+    function renderGlobalBubbleChart() {
+      const ctx = document.getElementById('globalBubbleChart');
+      if (!ctx) return;
+
+      const regionColors = [
+        { bg: 'rgba(37, 99, 235, 0.6)', border: 'rgba(37, 99, 235, 1)' },     // Bleu
+        { bg: 'rgba(16, 185, 129, 0.6)', border: 'rgba(16, 185, 129, 1)' },   // Vert Émeraude
+        { bg: 'rgba(245, 158, 11, 0.6)', border: 'rgba(245, 158, 11, 1)' },   // Ambre
+        { bg: 'rgba(239, 68, 68, 0.6)', border: 'rgba(239, 68, 68, 1)' },     // Rouge
+        { bg: 'rgba(139, 92, 246, 0.6)', border: 'rgba(139, 92, 246, 1)' },   // Violet
+        { bg: 'rgba(236, 72, 153, 0.6)', border: 'rgba(236, 72, 153, 1)' },   // Rose
+        { bg: 'rgba(14, 165, 233, 0.6)', border: 'rgba(14, 165, 233, 1)' }    // Cyan
+      ];
+
+      // Filtrer les données selon les régions sélectionnées dans les checkboxes
+      const filteredForChart = processedData.filter(item => selectedRegions.has(item.region));
+
+      // Étape 1 : Calculer les valeurs pour chaque entreprise (Montant Moyen pour l'axe Y, Somme totale pour la taille r)
+      const computedItems = filteredForChart.map(item => {
+        const x = item.computed_score || 0;
+        
+        // Calcul du montant moyen pour l'axe Y
+        const montantMoyenStr = item.statistiques_marches?.montant_moyen_marches;
+        let yVal = 0;
+        if (montantMoyenStr) {
+          const digits = montantMoyenStr.toString().replace(/\D/g, '');
+          if (digits) yVal = parseInt(digits, 10);
+        }
+
+        // Calcul de la somme totale (soit en additionnant les marchés individuels, soit en multipliant par le nombre)
+        let totalSum = 0;
+        const marches = item.statistiques_marches?.marches;
+        if (Array.isArray(marches) && marches.length > 0) {
+          marches.forEach(m => {
+            const amt = typeof m.montant === 'number' ? m.montant : parseInt((m.montant || '').toString().replace(/\D/g, ''), 10) || 0;
+            totalSum += amt;
+          });
+        } else {
+          // Fallback si le tableau de marchés n'est pas détaillé
+          const nb = item.statistiques_marches?.nb_marches_publics || 0;
+          totalSum = yVal * nb;
+        }
+
+        return {
+          item,
+          x,
+          yVal,
+          totalSum,
+          montantMoyenStr: montantMoyenStr || '0 €'
+        };
+      });
+
+      // Extraire les sommes totales pour trouver min et max et normaliser la taille des bulles
+      const totalSums = computedItems.map(d => d.totalSum);
+      const minSum = Math.min(...totalSums, 0);
+      const maxSum = Math.max(...totalSums, 1);
+
+      let colorIdx = 0;
+      const datasets = [];
+
+      const regionGroups = {};
+      computedItems.forEach(entry => {
+        const reg = entry.item.region || 'Général';
+        if (!regionGroups[reg]) regionGroups[reg] = [];
+        regionGroups[reg].push(entry);
+      });
+
+      for (const regionName in regionGroups) {
+        const color = regionColors[colorIdx % regionColors.length];
+        colorIdx++;
+
+        const bubbleData = regionGroups[regionName].map(entry => {
+          // Normalisation Min-Max (5px à 38px) basée sur la somme totale
+          let radiusVal = 12;
+          const minRadius = 5;
+          const maxRadius = 38;
+
+          if (maxSum > minSum) {
+            const normalized = (entry.totalSum - minSum) / (maxSum - minSum);
+            radiusVal = minRadius + normalized * (maxRadius - minRadius);
+          } else {
+            radiusVal = 20;
+          }
+
+          // Formatage de la somme totale pour les tooltips
+          const formattedTotal = entry.totalSum.toLocaleString('fr-FR') + ' €';
+
+          return {
+            x: entry.x,
+            y: entry.yVal,
+            r: Math.round(radiusVal),
+            companyName: entry.item.nom_entreprise || 'Entreprise',
+            region: regionName,
+            montantMoyen: entry.montantMoyenStr,
+            sommeTotale: formattedTotal
+          };
+        });
+
+        datasets.push({
+          label: regionName,
+          data: bubbleData,
+          backgroundColor: color.bg,
+          borderColor: color.border,
+          borderWidth: 1
+        });
+      }
+
+      if (globalBubbleChartInstance) {
+        globalBubbleChartInstance.destroy();
+      }
+
+      globalBubbleChartInstance = new Chart(ctx, {
+        type: 'bubble',
+        data: { datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              display: true,
+              position: 'bottom',
+              labels: { font: { size: 10 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const pt = context.raw;
+                  return `${pt.companyName} (${pt.region}) : Score ${pt.x}% | Montant moyen: ${pt.montantMoyen} | Somme totale: ${pt.sommeTotale}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Score Dynamique (%)', font: { size: 11, weight: 'bold' } },
+              min: 40,
+              max: 100,
+              ticks: { font: { size: 10 } }
+            },
+            y: {
+              title: { display: true, text: 'Montant Moyen des Marchés (€)', font: { size: 11, weight: 'bold' } },
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => value.toLocaleString('fr-FR') + ' €',
+                font: { size: 10 }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function filterData() {
+      const searchInputEl = document.getElementById('searchInput');
+      const filterCompatEl = document.getElementById('filterCompat');
+      
+      const searchText = searchInputEl ? searchInputEl.value.toLowerCase().trim() : "";
+      const selectedCompat = filterCompatEl ? filterCompatEl.value : "ALL";
+
+      const cards = document.querySelectorAll('.company-card');
+      const regionGroups = document.querySelectorAll('.region-group');
+
+      cards.forEach(card => {
+        const fulltext = card.getAttribute('data-fulltext');
+        const compat = card.getAttribute('data-compat');
+        const region = card.getAttribute('data-region');
+
+        const matchesSearch = searchText === "" || fulltext.includes(searchText);
+        const matchesCompat = selectedCompat === "ALL" || compat.includes(selectedCompat);
+        const matchesRegion = selectedRegions.has(region);
+
+        if (matchesSearch && matchesCompat && matchesRegion) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      regionGroups.forEach(group => {
+        const regionName = group.getAttribute('data-region');
+        const isRegionSelected = selectedRegions.has(regionName);
+
+        const visibleCards = group.querySelectorAll('.company-card:not(.hidden)');
+        if (!isRegionSelected || visibleCards.length === 0) {
+          group.classList.add('hidden');
+        } else {
+          group.classList.remove('hidden');
+        }
+      });
+
+      // Mettre à jour le graphique global lors du filtrage par région
+      renderGlobalBubbleChart();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initData(sampleData);
+      renderDashboard();
+      renderGlobalBubbleChart();
+    });
+  </script>
+</body>
+</html>
